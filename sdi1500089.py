@@ -263,13 +263,13 @@ testY
 # - #### Bag-of-words vectorization
 
 # region
-# bowVectorizer = CountVectorizer()
+bowVectorizer = CountVectorizer()
 
-# trainX = bowVectorizer.fit_transform(trainDF['Comment'])
-# testX = bowVectorizer.transform(testSetDf['Comment'])
+trainX = bowVectorizer.fit_transform(trainDF['Comment'])
+testX = bowVectorizer.transform(testSetDf['Comment'])
 
-# # print('\n-------------Naive Bayes Classification with BOW Vectorization-------------')
-# accuracyF1Dict["BOW-NB"] = NaiveBayesClassification(trainX, trainY, testX, testY, le)
+# print('\n-------------Naive Bayes Classification with BOW Vectorization-------------')
+accuracyF1Dict["BOW-NB"] = NaiveBayesClassification(trainX, trainY, testX, testY, le)
 # endregion
 
 # - #### Adding Lemmatization
@@ -343,12 +343,18 @@ accuracyF1Dict["TfIdf-SVM"] = SvmClassification(trainX, trainY, testX, testY, le
 # print('\n-------------Random Forests Classification with TfIdf Vectorization-------------')
 accuracyF1Dict["TfIdf-RandomForests"] = RandomForestClassification(trainX, trainY, testX, testY, le)
 
-trainX
+print(type(trainX))
+print(trainX.shape)
+# trainX.todense()
+print(type(testX))
+# for x in trainX:
+#     #for y in x:
+#     print(type(x))
+print(testX.shape)
 # endregion
 
 # - #### Adding Part-of-Speech Based Features
 
-# region
 def countTextTag(TextTagList, tag):
     counter = 0
     for (x,y) in TextTagList:
@@ -356,31 +362,67 @@ def countTextTag(TextTagList, tag):
             counter += 1
     return counter
 
-# trainX = bowVectorizer.fit_transform(trainDF['Comment'])
-# testX = bowVectorizer.transform(testSetDf['Comment'])
+def createFractionCharacteristics(listOfComments):
+    print("start create")
+    partOfSpeechTagerList = [nltk.pos_tag(word_tokenize(comment)) for comment in listOfComments]
+    nn = []
+    vb = []
+    rb = []
+    jj = []
+    for item in partOfSpeechTagerList:
+        nn.append(countTextTag(item, 'NN') / len(item) if len(item) else 0)
+        vb.append(countTextTag(item, 'VB') / len(item) if len(item) else 0)
+        rb.append(countTextTag(item, 'RB') / len(item) if len(item) else 0)
+        jj.append(countTextTag(item, 'JJ') / len(item) if len(item) else 0)
+    print('end create')
+    return [nn, vb, rb, jj]
 
-listOfComments = trainDF['Comment'].tolist()
-partOfSpeechTagerList = [nltk.pos_tag(word_tokenize(comment)) for comment in listOfComments]
-nn = []
-vb = []
-rb = []
-jj = []
-for item in partOfSpeechTagerList:
-    # nn = collections.Counter([y for (x,y) in item if y.startswith("NN")])
-    nn.append(countTextTag(item, 'NN') / len(item) if len(item) else 0)
-    vb.append(countTextTag(item, 'VB') / len(item) if len(item) else 0)
-    rb.append(countTextTag(item, 'RB') / len(item) if len(item) else 0)
-    jj.append(countTextTag(item, 'JJ') / len(item) if len(item) else 0)
+def mergeTfIdfWithPOS(textX, fractionList):
+    print("start merge")
+    counter = 0
+    # print('textX ', textX, '\n Type ', type(trainX), '\n Shape', trainX.shape)
+    print(type(textX))
+    textX = textX.toarray()
+    print(type(textX))
+    rows, columns = textX.shape
+    textX2 = np.empty([rows, columns + 4])
+    print(textX2.shape)
+    for tX in textX:
+        # tX[-1].append(fractionList[0][counter])
+        # tX[-1].append(fractionList[1][counter])
+        # tX[-1].append(fractionList[2][counter])
+        # tX[-1].append(fractionList[3][counter])
+        # print(tX)   
+        # textX[counter].append(fractionList[0][counter])
+        # textX[counter].append(fractionList[1][counter])
+        # textX[counter].append(fractionList[2][counter])
+        # textX[counter].append(fractionList[3][counter])
+        textX2[counter] = np.hstack((textX[counter], np.array((fractionList[0][counter], fractionList[1][counter], fractionList[2][counter], fractionList[3][counter]))))
+        # tX = np.hstack((tX, np.array((fractionList[0][counter], fractionList[1][counter], fractionList[2][counter], fractionList[3][counter]))))
+        # print(tX)
+        # np.hstack((tX, [fractionList[1][counter]]))
+        # np.hstack(tX, fractionList[2][counter])
+        # np.hstack(tX, fractionList[3][counter])
+        counter += 1
+    print("end merge")
+    return textX2
 
-posDf = pd.DataFrame()
-posDf['Noun'] = nn
-posDf['Verb'] = vb
-posDf['Adverb'] = rb
-posDf['Adjective'] = jj
+# region
+print(trainX.shape)
+trainX2 = mergeTfIdfWithPOS(trainX, createFractionCharacteristics(trainDF['Comment'].tolist()))
+print(trainX2.shape)
+# print(trainX.toarray())
+# print(testX.toarray())
+print(testX.shape)
+print(testX.toarray())
+# testX = testX.toarray()
+testX2 = mergeTfIdfWithPOS(testX, createFractionCharacteristics(testSetDf['Comment'].tolist()))
+print('call svm')
+# print('-------------SVM Classification with TfIdf Vectorization-------------')
+accuracyF1Dict["TfIdf-POS-SVM"] = SvmClassification(trainX2, trainY, testX2, testY, le)
 
-posDf
-# print(partOfSpeechTagerList[1])
-# print(nn)
+# print('\n-------------Random Forests Classification with TfIdf Vectorization-------------')
+accuracyF1Dict["TfIdf-POS-RandomForests"] = RandomForestClassification(trainX2, trainY, testX2, testY, le)
 
 # text = word_tokenize(trainDF.iloc[1]['Comment'])
 # nltk.help.upenn_tagset('NN.*')
@@ -394,32 +436,26 @@ posDf
 # #### Results Summary
 
 # region
-# resultsData = {r'Naive Bayes': ['Baseline', 'Lemmatization', 'Stop Words', 'Bigrams', 'Laplace Smoothing'],  
-#                'Accuracy': [accuracyF1Dict["BOW-NB"][0], accuracyF1Dict["BOW-NB-LM"][0], accuracyF1Dict["BOW-NB-SW"][0], accuracyF1Dict["BOW-NB-BG"][0], accuracyF1Dict["BOW-NB-LS"][0]],
-#                'F1 score': [accuracyF1Dict["BOW-NB"][1], accuracyF1Dict["BOW-NB-LM"][1], accuracyF1Dict["BOW-NB-SW"][1], accuracyF1Dict["BOW-NB-BG"][1], accuracyF1Dict["BOW-NB-LS"][1]]}
+resultsData = {r'Naive Bayes': ['Baseline', 'Lemmatization', 'Stop Words', 'Bigrams', 'Laplace Smoothing'],  
+               'Accuracy': [accuracyF1Dict["BOW-NB"][0], accuracyF1Dict["BOW-NB-LM"][0], accuracyF1Dict["BOW-NB-SW"][0], accuracyF1Dict["BOW-NB-BG"][0], accuracyF1Dict["BOW-NB-LS"][0]],
+               'F1 score': [accuracyF1Dict["BOW-NB"][1], accuracyF1Dict["BOW-NB-LM"][1], accuracyF1Dict["BOW-NB-SW"][1], accuracyF1Dict["BOW-NB-BG"][1], accuracyF1Dict["BOW-NB-LS"][1]]}
 
-# resultsData2 = {r'SVM': ['Baseline'],
-#                 'Accuracy': [accuracyF1Dict["TfIdf-SVM"][0]],
-#                 'F1 Score': [accuracyF1Dict["TfIdf-SVM"][1]]}
+resultsData2 = {r'SVM': ['Baseline', 'TfIdf + POS'],
+                'Accuracy': [accuracyF1Dict["TfIdf-SVM"][0], accuracyF1Dict["TfIdf-POS-SVM"][0]],
+                'F1 Score': [accuracyF1Dict["TfIdf-SVM"][1], accuracyF1Dict["TfIdf-POS-SVM"][1]]}
 
-# resultsData3 = {r'RandomForests': ['Baseline'],
-#                 'Accuracy': [accuracyF1Dict["TfIdf-RandomForests"][0]],
-#                 'F1 Score': [accuracyF1Dict["TfIdf-RandomForests"][1]]}
+resultsData3 = {r'RandomForests': ['Baseline', 'TfIdf + POS'],
+                'Accuracy': [accuracyF1Dict["TfIdf-RandomForests"][0], accuracyF1Dict["TfIdf-POS-RandomForests"][0]],
+                'F1 Score': [accuracyF1Dict["TfIdf-RandomForests"][1], accuracyF1Dict["TfIdf-POS-RandomForests"][1]]}
 # endregion
 
-# region
-# resultsDataFrame = pd.DataFrame(data=resultsData)
-# resultsDataFrame
-# endregion
+resultsDataFrame = pd.DataFrame(data=resultsData)
+resultsDataFrame
 
-# region
-# resultsDataFrame = pd.DataFrame(data=resultsData2)
-# resultsDataFrame
-# endregion
+resultsDataFrame = pd.DataFrame(data=resultsData2)
+resultsDataFrame
 
-# region
-# resultsDataFrame = pd.DataFrame(data=resultsData3)
-# resultsDataFrame
-# endregion
+resultsDataFrame = pd.DataFrame(data=resultsData3)
+resultsDataFrame
 
 
