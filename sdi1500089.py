@@ -183,6 +183,8 @@ def NaiveBayesClassification(trainX, trainY, testX, testY, labelEncoder):
 
     return accuracy_score(testY, predY), f1_score(testY, predY, average='weighted')
 
+# Δεύτερη συνάρτηση υλοποίησης Naive Bayes με χρήση MultinomialNB για το Laplace Smoothing.
+
 def NaiveBayesClassificationLS(trainX, trainY, testX, testY, labelEncoder):
     """
     Classify the text using the Naive Bayes classifier of scikit-learn for Laplace Smoothing  
@@ -247,18 +249,11 @@ trainY = le.transform(trainDF["Insult"])
 testY = le.transform(testLabelsDf["Insult"])
 
 accuracyF1Dict = dict()
-
-print(type(le), " ", type(le.classes_))
-print(le.classes_.dtype)
-print(type(trainY))
-print(trainY)
-le.classes_
 # endregion
 
-trainY
+# Εφόσον τα Insults στο dataset μας είναι 0 ή 1 δεν χρειάζεται ο μετασχηματισμός τους μέσω του LabelEconder.
 
-testY
-
+# Για λόγους portability του κώδικα κρατήθηκε ο μετασχηματισμός από τη 2η εργασία.
 
 # - #### Bag-of-words vectorization
 
@@ -268,11 +263,12 @@ bowVectorizer = CountVectorizer()
 trainX = bowVectorizer.fit_transform(trainDF['Comment'])
 testX = bowVectorizer.transform(testSetDf['Comment'])
 
-# print('\n-------------Naive Bayes Classification with BOW Vectorization-------------')
 accuracyF1Dict["BOW-NB"] = NaiveBayesClassification(trainX, trainY, testX, testY, le)
 # endregion
 
 # - #### Adding Lemmatization
+
+# Η ιδέα πάρθηκε από https://scikit-learn.org/stable/modules/feature_extraction.html#customizing-the-vectorizer-classes
 
 class LemmaTokenizer:
     def __init__(self):
@@ -286,7 +282,6 @@ bowVectorizer = CountVectorizer(tokenizer=LemmaTokenizer())
 trainX = bowVectorizer.fit_transform(trainDF['Comment'])
 testX = bowVectorizer.transform(testSetDf['Comment'])
 
-# print('\n-------------Naive Bayes Classification with BOW Vectorization and Lemmatization-------------')
 accuracyF1Dict["BOW-NB-LM"] = NaiveBayesClassification(trainX, trainY, testX, testY, le)
 # endregion
 
@@ -301,7 +296,6 @@ bowVectorizer = CountVectorizer(stop_words = stopWords)
 trainX = bowVectorizer.fit_transform(trainDF['Comment'])
 testX = bowVectorizer.transform(testSetDf['Comment'])
 
-# print('\n-------------Naive Bayes Classification with BOW Vectorization and Lemmatization-------------')
 accuracyF1Dict["BOW-NB-SW"] = NaiveBayesClassification(trainX, trainY, testX, testY, le)
 # endregion
 
@@ -313,7 +307,6 @@ bowVectorizer = CountVectorizer(ngram_range = (2, 2))
 trainX = bowVectorizer.fit_transform(trainDF['Comment'])
 testX = bowVectorizer.transform(testSetDf['Comment'])
 
-# print('\n-------------Naive Bayes Classification with BOW Vectorization and Lemmatization-------------')
 accuracyF1Dict["BOW-NB-BG"] = NaiveBayesClassification(trainX, trainY, testX, testY, le)
 # endregion
 
@@ -325,7 +318,6 @@ bowVectorizer = CountVectorizer()
 trainX = bowVectorizer.fit_transform(trainDF['Comment'])
 testX = bowVectorizer.transform(testSetDf['Comment'])
 
-# print('\n-------------Naive Bayes Classification with BOW Vectorization and Lemmatization-------------')
 accuracyF1Dict["BOW-NB-LS"] = NaiveBayesClassificationLS(trainX, trainY, testX, testY, le)
 # endregion
 
@@ -337,23 +329,20 @@ tfIdfVectorizer = TfidfVectorizer()
 trainX = tfIdfVectorizer.fit_transform(trainDF['Comment'])
 testX = tfIdfVectorizer.transform(testSetDf['Comment'])
 
-# print('-------------SVM Classification with TfIdf Vectorization-------------')
 accuracyF1Dict["TfIdf-SVM"] = SvmClassification(trainX, trainY, testX, testY, le)
 
-# print('\n-------------Random Forests Classification with TfIdf Vectorization-------------')
 accuracyF1Dict["TfIdf-RandomForests"] = RandomForestClassification(trainX, trainY, testX, testY, le)
 
-print(type(trainX))
-print(trainX.shape)
-# trainX.todense()
-print(type(testX))
-# for x in trainX:
-#     #for y in x:
-#     print(type(x))
-print(testX.shape)
 # endregion
 
 # - #### Adding Part-of-Speech Based Features
+
+# Συνάρτηση υπολογισμού πλήθους λέξεων με tag του τύπου:
+
+# - Noun tag = NN.*
+# - Verb tag = VB.*
+# - Adverb tag = RB.*
+# - Adjective tag = JJ.*
 
 def countTextTag(TextTagList, tag):
     counter = 0
@@ -362,8 +351,14 @@ def countTextTag(TextTagList, tag):
             counter += 1
     return counter
 
+# Συνάρτηση δημιουργίας λίστας λιστών των fractions των τεσσάρων κατηγοριών λέξεων για κάθε comment.
+
+# Για τον tagger η ιδέα πάρθηκε από https://www.nltk.org/book/ch05.html 
+
+# Για τη διαίρεση με το μηδέν η ιδέα πάρθηκε από https://stackoverflow.com/questions/27317517/make-division-by-zero-equal-to-zero
+
 def createFractionCharacteristics(listOfComments):
-    print("start create")
+    # print("start create")
     partOfSpeechTagerList = [nltk.pos_tag(word_tokenize(comment)) for comment in listOfComments]
     nn = []
     vb = []
@@ -374,63 +369,43 @@ def createFractionCharacteristics(listOfComments):
         vb.append(countTextTag(item, 'VB') / len(item) if len(item) else 0)
         rb.append(countTextTag(item, 'RB') / len(item) if len(item) else 0)
         jj.append(countTextTag(item, 'JJ') / len(item) if len(item) else 0)
-    print('end create')
     return [nn, vb, rb, jj]
 
+# Συνάρτηση συνένωσης πίνακα tfIdf με τα 4 fractions που παρήχθησαν από το POS.
+
+# Για τη συνένωση των δύο πινάκων η ιδέα πάρθηκε από https://numpy.org/doc/stable/reference/generated/numpy.hstack.html
+
 def mergeTfIdfWithPOS(textX, fractionList):
-    print("start merge")
-    counter = 0
-    # print('textX ', textX, '\n Type ', type(trainX), '\n Shape', trainX.shape)
-    print(type(textX))
     textX = textX.toarray()
-    print(type(textX))
     rows, columns = textX.shape
     textX2 = np.empty([rows, columns + 4])
-    print(textX2.shape)
-    for tX in textX:
-        # tX[-1].append(fractionList[0][counter])
-        # tX[-1].append(fractionList[1][counter])
-        # tX[-1].append(fractionList[2][counter])
-        # tX[-1].append(fractionList[3][counter])
-        # print(tX)   
-        # textX[counter].append(fractionList[0][counter])
-        # textX[counter].append(fractionList[1][counter])
-        # textX[counter].append(fractionList[2][counter])
-        # textX[counter].append(fractionList[3][counter])
-        textX2[counter] = np.hstack((textX[counter], np.array((fractionList[0][counter], fractionList[1][counter], fractionList[2][counter], fractionList[3][counter]))))
-        # tX = np.hstack((tX, np.array((fractionList[0][counter], fractionList[1][counter], fractionList[2][counter], fractionList[3][counter]))))
-        # print(tX)
-        # np.hstack((tX, [fractionList[1][counter]]))
-        # np.hstack(tX, fractionList[2][counter])
-        # np.hstack(tX, fractionList[3][counter])
-        counter += 1
-    print("end merge")
+    for i in range(len(textX)):
+        textX2[i] = np.hstack((textX[i], np.array((fractionList[0][i], fractionList[1][i], fractionList[2][i], fractionList[3][i]))))
     return textX2
 
 # region
-print(trainX.shape)
 trainX2 = mergeTfIdfWithPOS(trainX, createFractionCharacteristics(trainDF['Comment'].tolist()))
-print(trainX2.shape)
-# print(trainX.toarray())
-# print(testX.toarray())
-print(testX.shape)
-print(testX.toarray())
-# testX = testX.toarray()
+
 testX2 = mergeTfIdfWithPOS(testX, createFractionCharacteristics(testSetDf['Comment'].tolist()))
-print('call svm')
-# print('-------------SVM Classification with TfIdf Vectorization-------------')
+
 accuracyF1Dict["TfIdf-POS-SVM"] = SvmClassification(trainX2, trainY, testX2, testY, le)
 
-# print('\n-------------Random Forests Classification with TfIdf Vectorization-------------')
 accuracyF1Dict["TfIdf-POS-RandomForests"] = RandomForestClassification(trainX2, trainY, testX2, testY, le)
+# endregion
 
-# text = word_tokenize(trainDF.iloc[1]['Comment'])
-# nltk.help.upenn_tagset('NN.*')
-# nltk.help.upenn_tagset('VB.*')
-# nltk.help.upenn_tagset('RB.*')
-# nltk.help.upenn_tagset('JJ.*')
-# nltk.pos_tag(text)
+# ## __Beat the Benchmark__
 
+# Lets add Lemmatization to TfIdf and run it with SVM 
+
+# Από όλους τους συνδυασμούς που έκανα αυτός ήταν ο καλύτερος που οριακά έφτανε το καλύτερο μου score.
+
+# region
+bowVectorizer = TfidfVectorizer(tokenizer=LemmaTokenizer())
+
+trainX = bowVectorizer.fit_transform(trainDF['Comment'])
+testX = bowVectorizer.transform(testSetDf['Comment'])
+
+accuracyF1Dict["TfIdf-SVM-LM"] = SvmClassification(trainX, trainY, testX, testY, le)
 # endregion
 
 # #### Results Summary
@@ -447,6 +422,10 @@ resultsData2 = {r'SVM': ['Baseline', 'TfIdf + POS'],
 resultsData3 = {r'RandomForests': ['Baseline', 'TfIdf + POS'],
                 'Accuracy': [accuracyF1Dict["TfIdf-RandomForests"][0], accuracyF1Dict["TfIdf-POS-RandomForests"][0]],
                 'F1 Score': [accuracyF1Dict["TfIdf-RandomForests"][1], accuracyF1Dict["TfIdf-POS-RandomForests"][1]]}
+
+resultsData4 = {r'Beat the Benchmark': ['TfIdf + SVM + LM'],
+                'Accuracy': [accuracyF1Dict["TfIdf-SVM-LM"][0]],
+                'F1 Score': [accuracyF1Dict["TfIdf-SVM-LM"][1]]}
 # endregion
 
 resultsDataFrame = pd.DataFrame(data=resultsData)
@@ -457,5 +436,15 @@ resultsDataFrame
 
 resultsDataFrame = pd.DataFrame(data=resultsData3)
 resultsDataFrame
+
+resultsDataFrame = pd.DataFrame(data=resultsData4)
+resultsDataFrame
+
+# **Συμπεράσματα**
+# - To dataset περιέχει πολλές λέξεις οι οποίες εκφράζουν επιθετικότητα αλλά ορισμένα γράμματα τους έχουν αντικατασταθεί από ειδικούς χαρακτήρες όπως @ και άλλοι. Επιπλέον με τον καθαρισμό του αρχείου από τους ειδικούς χαρακτήρες αυτές οι λέξεις δεν μπορούν να αναγνωριστούν πλέον.
+# - Η υλοποίηση των αλγορίθμων ταξινόμισης βασίζονται στην 2η εργασία.
+# - Η εκτέλεση των αλγορίμων SVM και RandomForest με TfIdf + Part-of-Speech χρειάζονται γύρω στα 15-17 λεπτά στο μηχάνημα μου, και αυτό προκύπτει από το μεγάλο μέγεθος των παραγόμενων πινάκων.
+# - Στο Part-of-Speech για κάθε μια από τις 4 κατηγορίες χαρακτηριστικών λαμβάνονται υπόψιν και παράγωγα όπως για verb είναι τα VB, VBZ και άλλα.
+
 
 
