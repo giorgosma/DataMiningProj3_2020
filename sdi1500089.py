@@ -375,6 +375,8 @@ def createFractionCharacteristics(listOfComments):
 
 # Για τη συνένωση των δύο πινάκων η ιδέα πάρθηκε από https://numpy.org/doc/stable/reference/generated/numpy.hstack.html
 
+# Για τη δημιουργία του νέου πίνακα μετά τη συνένωση των 2, χρησιμοποιήθηκε το empty από https://numpy.org/doc/1.18/reference/generated/numpy.empty.html
+
 def mergeTfIdfWithPOS(textX, fractionList):
     textX = textX.toarray()
     rows, columns = textX.shape
